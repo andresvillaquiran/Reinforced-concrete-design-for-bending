@@ -74,7 +74,7 @@ def Analisis_viga(fc,fy,b,h,r,Mu):
     Asmax = 0.85*fc*B1*b*(d*euc/(euc+(ey+euc)))/fy
    
     ## ACERO REQUERIDO para ser controlada por traccion
-    if ((-phi*b*d*fy*fc)**2-4*phi*0.59*(fy**2)*(fc*Mu*b)) < 0:
+    if ((-phi*b*d*fy*fc)**2-4*phi*0.59*(fy**2)*(fc*Mu*b)) <= 0:
 
         print("No es posible calcular As requerido, revise los datos ingresados")
         Asreq = 0
@@ -112,7 +112,7 @@ lista_refuerzo = np.array([[0,0,0],
 
 ventana1 = tk.Tk()
 ventana1.geometry("900x600") ## tamaño de la ventana general
-ventana1.title("Diseño de viguetas") ## titulo de la ventana general
+ventana1.title("DISEÑO A FLEXION NSR-10") ## titulo de la ventana general
 
 # Creamos los frames para organizar la información
 
@@ -131,7 +131,7 @@ gAsb        = 0.0
 
 
 
-etiq_inicio = tk.Label(frame1, text='Bienvenido a la sufridera DCR1 -- Diseñado por Andres Villaquirán ')
+etiq_inicio = tk.Label(frame1, text='Welcome to free design -- by Andres Villaquirán ')
 etiq_inicio.grid(row=0, column=0, columnspan=3, padx=5, pady=3)
 
 
@@ -280,10 +280,21 @@ def calculo_entradas():   # Leemos las variables que entraron al principio
     f2_Asmax.config(text=round(gAsmax*10000,3))
     f2_Asmin.config(text=round(gAsmin*10000,3))
 
-    global entradas
+    global entradas, etiquetas_asreq, etiquetas_eval
     entradas = {} 
+    etiquetas_asreq ={ }
+    etiquetas_eval ={ }
 
+    for i in range(int(gnum_tramos)):
+    
+        # Creas la etiqueta una sola vez y la guardas en el diccionario
+        lbl = tk.Label(frame2, text="")
+        lbl.grid(row=5+i, column=2, padx=5, pady=3)
+        etiquetas_asreq[f'Asreq_{i}'] = lbl
 
+        lbl_eval = tk.Label(frame2, text="")
+        lbl_eval.grid(row=5+i, column=5, padx=5, pady=3)
+        etiquetas_eval[f'evaluacionAsq_{i}'] = lbl_eval
 
     for i in range(int(gnum_tramos)):  # PARA EL NUMERO DE TRAMOS CREAMOS LAS ENTRADAS DE DE MU, ACERO COLOCADO
 
@@ -325,7 +336,7 @@ boton_cambio_f2.grid(row=19, column=1, padx=5, pady=3) # Ubicación en la cuadr�
 #################################################  CONTENIDO FRAME 2 ############################################
 ################################################                     ############################################
 
-tk.Label(frame2, text = ' ANALISIS DE VIGUETAS POR TRAMOS').grid(row=0, column=1, columnspan=2, padx=5, pady=3)
+tk.Label(frame2, text = ' ANALISIS DE FLEZION POR MOMENTOS').grid(row=0, column=1, columnspan=2, padx=5, pady=3)
 
 ##   Traemos los datos de interes ya calculados
 tk.Label(frame2, text='As max [cm2]').grid(row=1, column=0, padx=5, pady=3)
@@ -358,10 +369,14 @@ def calculo_tramos(): # calculamos el acero requerido con el momento ingresado
         Datos_tramos[f'Mu_{i}'] = abs(float(entradas[f'Mu_{i}'].get())) # Mu ingresado
 
         Datos_tramos[f'Asreq_{i}'] = round(Analisis_viga(gfc,gfy,gb,gh,gr,float(Datos_tramos[f'Mu_{i}']))[4],8) # calculamos el acero requerido
-
-        tk.Label(frame,text=f' {round(Datos_tramos[f'Asreq_{i}']*10000,4)}').grid(row=5+i, column=2, padx=5, pady=3) # impresion del calculo Asreq en cm2
-
         
+        if Datos_tramos[f'Asreq_{i}'] == 0:
+            aviso_Asreq = "Rev. Seccion"
+        else:
+            aviso_Asreq = round(Datos_tramos[f'Asreq_{i}']*10000, 3)
+
+        etiquetas_asreq[f'Asreq_{i}'].config(text=f'{aviso_Asreq}')  # Actualizamos el texto de la etiqueta de Asreq
+     
 
 def evaluar_Asreq():
 
@@ -372,11 +387,8 @@ def evaluar_Asreq():
         #Datos_tramos[f'Acero_colocado_{i}'] = float(entradas[f'Acero_colocado_{i}'].get())
         #Datos_tramos[f'Acero_colocado_{i}'] = eval(entradas[f'Acero_colocado_{i}'].get())
 
-        if  float(Datos_tramos[f'Asreq_{i}']) < gAsmin:
-
-            #Datos_tramos[f'evaluacionAsq_{i}']= tk.Label(frame2,text='USE AS MIN')
-            #Datos_tramos[f'evaluacionAsq_{i}'].grid(row=5+i, column=4, padx=5, pady=3)
-            texto = 'USE AS MIN' 
+        if gAsmin > gAsmax:
+            texto = 'NO CUMPLE' 
 
         elif float(Datos_tramos[f'Asreq_{i}']) > gAsmax:
 
@@ -396,18 +408,25 @@ def evaluar_Asreq():
             #Datos_tramos[f'evaluacionAsq_{i}'].grid(row=5+i, column=4, padx=5, pady=3)
             texto = ' NO CUMPLE' 
 
+        elif  float(Datos_tramos[f'Asreq_{i}']) < gAsmin:
+            #Datos_tramos[f'evaluacionAsq_{i}']= tk.Label(frame2,text='USE AS MIN')
+            #Datos_tramos[f'evaluacionAsq_{i}'].grid(row=5+i, column=4, padx=5, pady=3)
+            texto = 'USE AS MIN'
+
         else:
             #Datos_tramos[f'evaluacionAsq_{i}'] = tk.Label(frame2,text='CUMPLE')
             #Datos_tramos[f'evaluacionAsq_{i}'].grid(row=5+i, column=4, padx=5, pady=3)
             texto = 'CUMPLE'
 
-        if f'evaluacionAsq_{i}' in Datos_tramos:
+        etiquetas_eval[f'evaluacionAsq_{i}'].config(text=texto) # actualizamos el texto de la etiqueta
 
-            #Datos_tramos[f'evaluacionAsq_{i}'].destroy() # eliminamos la etiqueta
-            Datos_tramos[f'evaluacionAsq_{i}'].config(text=texto) # actualizamos el texto de la etiqueta
-        else:
-            Datos_tramos[f'evaluacionAsq_{i}'] = tk.Label(frame2,text=texto)
-            Datos_tramos[f'evaluacionAsq_{i}'].grid(row=5+i, column=5, padx=5, pady=3)
+#        if f'evaluacionAsq_{i}' in Datos_tramos:
+#
+#            #Datos_tramos[f'evaluacionAsq_{i}'].destroy() # eliminamos la etiqueta
+#            Datos_tramos[f'evaluacionAsq_{i}'].config(text=texto) # actualizamos el texto de la etiqueta
+#        else:
+#            Datos_tramos[f'evaluacionAsq_{i}'] = tk.Label(frame2,text=texto)
+#           Datos_tramos[f'evaluacionAsq_{i}'].grid(row=5+i, column=5, padx=5, pady=3)
 
 
         if f'etiq_Ascolomado_{i}' in Datos_tramos:
