@@ -194,12 +194,6 @@ entrada_calibre  = tk.Entry(frame1)
 etiq_calibre.grid(row=8, column=0, padx=10, pady=3) # Ubicación en la cuadrícula
 entrada_calibre.grid(row=8, column=2, padx=3, pady=3) # Ubicación en la cuadrícula
 
-'''
-etiq_dv = tk.Label(frame1, text='Longitud de cortante [m]')
-etiq_dv.grid(row=9, column =0, padx=5, pady=3) # Ubicación en la cuadrícula
-entrada_dv = tk.Entry(frame1)
-entrada_dv.grid(row=9, column =2, padx=5, pady=3)
-'''
 
 etiq_num_viguetas = tk.Label(frame1, text='Numero de tramos')
 etiq_num_viguetas.grid(row=9, column =0, padx=5, pady=3) # Ubicación en la cuadrícula
@@ -218,10 +212,6 @@ etiq_Vc.grid(row=13, column=0, padx=5, pady=3) # Ubicación en la cuadrícula
 etiq_Vsmax = tk.Label(frame1,text='Vs max [kN]')
 etiq_Vsmax.grid(row=14, column=0, padx=5, pady=3) # Ubicación en la cuadrícula
 
-'''
-etiq_smaxd = tk.Label(frame1,text='Separacion max [m]')
-etiq_smaxd.grid(row=15, column=0, padx=5, pady=3) # Ubicación en la cuadrícula
-'''
 
 
 ## Etiqueta de resultados
@@ -236,10 +226,6 @@ result_Vc.grid(row=13, column=2, padx=5, pady=3) #
 result_Vsmax= tk.Label(frame1)
 result_Vsmax.grid(row=14, column=2, padx=5, pady=3) # 
 
-'''
-result_smaxd= tk.Label(frame1)
-result_smaxd.grid(row=15, column=2, padx=5, pady=3) # 
-'''
 
 def calculo_aceros():   # Leemos las variables que entraron al principio
 
@@ -286,9 +272,9 @@ def calculo_aceros():   # Leemos las variables que entraron al principio
     print(gnum_tramos)
 
     # Actualizamos el label de frame 2 de los aceros
-    f2_Vc.config(text=round(gVc,8))
-    f2_Vsmax.config(text=round(gVsmax,10))
-    #f2_smaxd.config(text=round(gsmaxd,8))
+    f2_Vc.config(text=round(gVc,3))
+    f2_Vsmax.config(text=round(gVsmax,3))
+    
 
     global entradas
     entradas = {} 
@@ -417,15 +403,7 @@ def calculo_tramos(): # calculamos el diseño por cortante de cada tramo
             Etiquetas_tramos[f'num_est_min_{i}'].grid(row=5+i, column=9, padx=5, pady=3)
             Etiquetas_tramos[f'total_estri_{i}']= tk.Label(frame2, text=f'{Datos_tramos[f"num_est_min_{i}"]+Datos_tramos[f"num_est_vc_{i}"]}')
             Etiquetas_tramos[f'total_estri_{i}'].grid(row=5+i, column=10, padx=5, pady=3)
-        '''
-        tk.Label(frame,text=f' {round(Vsreq,3)}').grid(row=5+i, column=3, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {Etiquetas_tramos[f"chequeo_{i}"]}').grid(row=5+i, column=4, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {smaxd}').grid(row=5+i, column=5, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {round(Xvc,4)}').grid(row=5+i, column=6, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {num_est_vc}').grid(row=5+i, column=7, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {round(xmin,4)}').grid(row=5+i, column=8, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {num_est_min}').grid(row=5+i, column=9, padx=5, pady=3) # impresion del calculo Asreq
-        '''
+
 
 
 boton_tramos=tk.Button(frame2, text='Calculo diseño Cortante ', command= lambda: calculo_tramos())
