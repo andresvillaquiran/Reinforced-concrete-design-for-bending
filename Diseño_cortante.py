@@ -29,7 +29,7 @@ lista_refuerzo = np.array([[0,0,0],
                         [18,57.3,2581]])
 
 
-def Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv):
+def Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv):  # cambio de filosofia - se requeire definir el cortante a una distancia d
     # Coefieciente de reduccion de cortante phi = 0.75 
     phi = 0.75
 
@@ -54,8 +54,23 @@ def Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv):
     #Maxima resistencia del refuerzo a cortante
     Vsmax = phi*0.66*sqrt(fc/1000)*b*d*1000 #[kN]
     print(f"Vsmax = {round(Vsmax,3)} [kN]")
+    
+
+    if dv == 0 :
+        dv = 1.0 # [m] Distancia de cortante por defecto
+    else:
+        dv = dv    
+
+    vud = Vu*(dv-d)/(dv) # Cortante a la distancia de diseño
 
     if Vu == 0:
+        lx = 0
+    else:
+        lx = dv-Vc*dv/Vu -bv/2-0.05 # Distancia de cortante a la que se requiere el refuerzo
+
+    print(f'lx = {round(lx,3)} [m]')
+
+    if vud == 0:
         Vsreq = 0.0
         smaxd = 0
         Xvc = 0
@@ -65,7 +80,8 @@ def Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv):
         long_princ = 0
     else:
 
-        Vsreq = Vu - Vc # Cuando Vs necesito en mi viga?
+        Vsreq = vud - Vc 
+        # Cuando Vs necesito en mi viga?
         if Vsreq < 0: # Si no necesita simplemente lo hago 0
             Vsreq = 0.0
 
@@ -75,7 +91,7 @@ def Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv):
         else:
             smax = min([d/4,0.3,600*Av*b])
 
-        smax_inicial = floor(smax/0.05)*0.05 # separacion de diseño en multiplo de 5cm 
+        smax_inicial = floor(smax/0.01)*0.01 # separacion de diseño en multiplo de 1cm 
 
         #Verifico la separacion maximo por resistencia
         if Vsreq == 0.0:
@@ -83,52 +99,27 @@ def Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv):
         else:
 
             smaxS = phi*Av*fy*d/Vsreq # separacion maximo por resistencia
+
         print(f'Vsreq = {round(Vsreq,3)} [kN]')
         print(f'smaxS = {round(smaxS,3)} [m]')
 
-        smaxS = floor(smaxS/0.05)*0.05 # separacion de diseño en multiplo de 5cm 
+        smaxS = floor(smaxS/0.01)*0.01 # separacion de diseño en multiplo de 1cm 
 
         smaxd = min(smax_inicial,smaxS) # separacion de diseño final 
 
-        #Distancia de cortante DISEÑO ESTRIBOS
-        #dv = 1.8 #[m] ###########
-        Xvc = dv*(1-Vc/Vu) # Distancia de refuero por cortante diseñado
 
-        if Xvc-bv/2-0.05 < bv/2+0.05:
-            #Xvc = 0
-            num_est_vc = 0
-            long_princ = 0
-            print(f'Xvc = {round(Xvc,2)} [m]')
-            xmin  =  dv*(1-Vc/(2*Vu)) - bv/2-0.05
-            num_est_min = ceil((xmin)/smaxd) +1  # Numero de estribos minimos
+        if lx < 0:  # en teoria long princ es igual a lx
+            lx = 0  # descartamos longitud negativa
+            num_est_vc = 0  # En este caso no hay estribos minimos
 
         else:
-            long_princ = Xvc-bv/2-0.05
-            print(f'longitud_estribos principales: ', long_princ)
-            num_est_vc = ceil((long_princ)/smaxd) +1 # Numero de estribos necesarios en zona de requerimiento
-            print((Xvc-bv/2-0.05)/smaxd)
-            xmin = dv*(1-Vc/(2*Vu)) - Xvc # Distancia de refuerzo minimo por cortante
-            num_est_min =ceil((xmin)/smaxd) # Numero de estribos minimos
-
-
-        if h < 0.25:
-            xmin = 0
-            num_est_min = 0
-
-        elif xmin <0:
-            xmin=0
-            num_est_min = 0
-        else:
-            num_est_min = num_est_min
+            num_est_vc = ceil((lx)/smaxd) +1 # Numero de estribos necesarios en zona de requerimiento
             
-    print(f"# estribo min = {num_est_min} ")
-    print('    ')
-
-    return smaxd, Xvc,xmin, num_est_vc, num_est_min, Vsmax, Vc, Vsreq,long_princ
+    return smaxd, num_est_vc, Vsmax, Vc, Vsreq, lx       #,num_est_min,
 
 ventana1 = tk.Tk()
 ventana1.geometry("1200x500") ## tamaño de la ventana general
-ventana1.title("Diseño viguetas Cortante ") ## titulo de la ventana general
+ventana1.title("Diseño viguetas Cortante") ## titulo de la ventana general
 
 # Creamos los frames para organizar la información
 
@@ -147,7 +138,7 @@ gAsb        = 0.0
 
 
 
-etiq_inicio = tk.Label(frame1, text='Bienvenido a la sufridera DCR1 -- Diseñado por Andres Villaquirán ')
+etiq_inicio = tk.Label(frame1, text='Diseño no sismoresistente-- By Andres Villaquirán ')
 etiq_inicio.grid(row=0, column=0, columnspan=3, padx=5, pady=3)
 
 
@@ -194,12 +185,6 @@ entrada_calibre  = tk.Entry(frame1)
 etiq_calibre.grid(row=8, column=0, padx=10, pady=3) # Ubicación en la cuadrícula
 entrada_calibre.grid(row=8, column=2, padx=3, pady=3) # Ubicación en la cuadrícula
 
-'''
-etiq_dv = tk.Label(frame1, text='Longitud de cortante [m]')
-etiq_dv.grid(row=9, column =0, padx=5, pady=3) # Ubicación en la cuadrícula
-entrada_dv = tk.Entry(frame1)
-entrada_dv.grid(row=9, column =2, padx=5, pady=3)
-'''
 
 etiq_num_viguetas = tk.Label(frame1, text='Numero de tramos')
 etiq_num_viguetas.grid(row=9, column =0, padx=5, pady=3) # Ubicación en la cuadrícula
@@ -218,11 +203,6 @@ etiq_Vc.grid(row=13, column=0, padx=5, pady=3) # Ubicación en la cuadrícula
 etiq_Vsmax = tk.Label(frame1,text='Vs max [kN]')
 etiq_Vsmax.grid(row=14, column=0, padx=5, pady=3) # Ubicación en la cuadrícula
 
-'''
-etiq_smaxd = tk.Label(frame1,text='Separacion max [m]')
-etiq_smaxd.grid(row=15, column=0, padx=5, pady=3) # Ubicación en la cuadrícula
-'''
-
 
 ## Etiqueta de resultados
 
@@ -236,10 +216,6 @@ result_Vc.grid(row=13, column=2, padx=5, pady=3) #
 result_Vsmax= tk.Label(frame1)
 result_Vsmax.grid(row=14, column=2, padx=5, pady=3) # 
 
-'''
-result_smaxd= tk.Label(frame1)
-result_smaxd.grid(row=15, column=2, padx=5, pady=3) # 
-'''
 
 def calculo_aceros():   # Leemos las variables que entraron al principio
 
@@ -256,12 +232,13 @@ def calculo_aceros():   # Leemos las variables que entraron al principio
     d = h-r-0.01
     
     Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv)
-    smaxd, Xvc,xmin, num_est_vc, num_est_min, Vsmax, Vc, Vsreq,long_princ = Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv)
+    smaxd, num_est_vc, Vsmax, Vc, Vsreq, long_princ = Analisis_viga(fc,fy,b,h,r,Vu,bv,calibre,dv)
     print(f'Vc_cal {Vc} [kN]')
     print(f'Vsmax_cal {Vsmax} [kN]')
+    print(f'long_princ_cal {long_princ} [m]')
 
     result_d['text'] = round(d,4)   
-    result_Vc['text'] = round(Vc,4)
+    result_Vc['text'] = round(Vc,3)
     result_Vsmax['text'] = round(Vsmax,3)   
     #result_smaxd['text'] = round(smaxd,4)
 
@@ -277,7 +254,7 @@ def calculo_aceros():   # Leemos las variables que entraron al principio
     gbv = bv
     gcalibre = calibre
     gVc = Vc
-    glong_princ = long_princ
+
 
     boton_tramos.grid_forget()
     boton_regresar.grid_forget()
@@ -286,9 +263,9 @@ def calculo_aceros():   # Leemos las variables que entraron al principio
     print(gnum_tramos)
 
     # Actualizamos el label de frame 2 de los aceros
-    f2_Vc.config(text=round(gVc,8))
-    f2_Vsmax.config(text=round(gVsmax,10))
-    #f2_smaxd.config(text=round(gsmaxd,8))
+    f2_Vc.config(text=round(gVc,3))
+    f2_Vsmax.config(text=round(gVsmax,3))
+
 
     global entradas
     entradas = {} 
@@ -352,9 +329,7 @@ tk.Label(frame2, text='Chequeo').grid(row=4, column=4, padx=5, pady=3)
 tk.Label(frame2, text='Smax diseño [m]').grid(row=4, column=5, padx=5, pady=3)
 tk.Label(frame2, text='Long. Refuerzo').grid(row=4, column=6, padx=5, pady=3)
 tk.Label(frame2, text='# Estribos').grid(row=4, column=7, padx=5, pady=3)
-tk.Label(frame2, text='Long. Refuerzo min').grid(row=4, column=8, padx=5, pady=3)
-tk.Label(frame2, text='# Estribos min').grid(row=4, column=9, padx=5, pady=3)
-tk.Label(frame2, text='# Total estribos').grid(row=4, column=10, padx=5, pady=3)
+
 
 global Etiquetas_tramos, Datos_tramos
 Datos_tramos ={}
@@ -371,19 +346,15 @@ def calculo_tramos(): # calculamos el diseño por cortante de cada tramo
         
         Datos_tramos[f'dv_{i}'] = abs(float(entradas[f'dv_{i}'].get())) # dv ingresado
 
-        smaxd, Xvc,xmin, num_est_vc, num_est_min, Vsmax, Vc, Vsreq ,long_princ = Analisis_viga(gfc,gfy,gb,gh,gr,Datos_tramos[f'Vu_{i}'],gbv,gcalibre,Datos_tramos[f'dv_{i}'])
+        smaxd, num_est_vc, Vsmax, Vc, Vsreq, long_princ = Analisis_viga(gfc,gfy,gb,gh,gr,Datos_tramos[f'Vu_{i}'],gbv,gcalibre,Datos_tramos[f'dv_{i}'])
 
         #Datos_tramos[f'Asreq_{i}'] = round(Analisis_viga(gfc,gfy,gb,gh,gr,float(Datos_tramos[f'Vu_{i}']))[4],8)
 
         Datos_tramos[f'Vsreq_{i}'] = round(Vsreq,3)
         Datos_tramos[f'smaxd_{i}'] = round(smaxd,4)
-        Datos_tramos[f'long_princ_{i}'] = round(long_princ,3)
+        
         Datos_tramos[f'num_est_vc_{i}'] = num_est_vc
-
-        Datos_tramos[f'xmin_{i}'] = round(xmin,3)
-
-        Datos_tramos[f'num_est_min_{i}'] = num_est_min
-
+        Datos_tramos[f'long_princ_{i}'] = round(long_princ,3)
 
         if Vsreq > gVsmax:
             Datos_tramos[f'chequeo_{i}'] = 'NO CUMPLE Vs'
@@ -394,11 +365,8 @@ def calculo_tramos(): # calculamos el diseño por cortante de cada tramo
             Etiquetas_tramos[f'Vsreq_{i}'].config(text=f'{Datos_tramos[f"Vsreq_{i}"]}')      
             Etiquetas_tramos[f'chequeo_{i}'].config(text=f'{Datos_tramos[f"chequeo_{i}"]}')       
             Etiquetas_tramos[f'smaxd_{i}'].config(text=f'{Datos_tramos[f"smaxd_{i}"]}')          
-            Etiquetas_tramos[f'long_princ_{i}'].config(text=f'{Datos_tramos[f"long_princ_{i}"]}')           
             Etiquetas_tramos[f'num_est_vc_{i}'].config(text=f'{Datos_tramos[f"num_est_vc_{i}"]}')    
-            Etiquetas_tramos[f'xmin_{i}'].config(text=f'{Datos_tramos[f"xmin_{i}"]}')   
-            Etiquetas_tramos[f'num_est_min_{i}'].config(text=f'{Datos_tramos[f"num_est_min_{i}"]}')   
- 
+            Etiquetas_tramos[f'long_princ_{i}'].config(text=f'{Datos_tramos[f"long_princ_{i}"]}')
 
         else:
             Etiquetas_tramos[f'Vsreq_{i}']      = tk.Label(frame2, text=f'{Datos_tramos[f"Vsreq_{i}"]}')
@@ -411,21 +379,7 @@ def calculo_tramos(): # calculamos el diseño por cortante de cada tramo
             Etiquetas_tramos[f'long_princ_{i}'].grid(row=5+i, column=6, padx=5, pady=3)
             Etiquetas_tramos[f'num_est_vc_{i}'] = tk.Label(frame2, text=f'{Datos_tramos[f"num_est_vc_{i}"]}')
             Etiquetas_tramos[f'num_est_vc_{i}'].grid(row=5+i, column=7, padx=5, pady=3)
-            Etiquetas_tramos[f'xmin_{i}']       = tk.Label(frame2, text=f'{Datos_tramos[f"xmin_{i}"]}')
-            Etiquetas_tramos[f'xmin_{i}'].grid(row=5+i, column=8, padx=5, pady=3)
-            Etiquetas_tramos[f'num_est_min_{i}']= tk.Label(frame2, text=f'{Datos_tramos[f"num_est_min_{i}"]}')
-            Etiquetas_tramos[f'num_est_min_{i}'].grid(row=5+i, column=9, padx=5, pady=3)
-            Etiquetas_tramos[f'total_estri_{i}']= tk.Label(frame2, text=f'{Datos_tramos[f"num_est_min_{i}"]+Datos_tramos[f"num_est_vc_{i}"]}')
-            Etiquetas_tramos[f'total_estri_{i}'].grid(row=5+i, column=10, padx=5, pady=3)
-        '''
-        tk.Label(frame,text=f' {round(Vsreq,3)}').grid(row=5+i, column=3, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {Etiquetas_tramos[f"chequeo_{i}"]}').grid(row=5+i, column=4, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {smaxd}').grid(row=5+i, column=5, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {round(Xvc,4)}').grid(row=5+i, column=6, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {num_est_vc}').grid(row=5+i, column=7, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {round(xmin,4)}').grid(row=5+i, column=8, padx=5, pady=3) # impresion del calculo Asreq
-        tk.Label(frame,text=f' {num_est_min}').grid(row=5+i, column=9, padx=5, pady=3) # impresion del calculo Asreq
-        '''
+
 
 
 boton_tramos=tk.Button(frame2, text='Calculo diseño Cortante ', command= lambda: calculo_tramos())
